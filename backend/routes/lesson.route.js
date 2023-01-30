@@ -68,4 +68,64 @@ lessonRoute.route('/deleteLesson/:id').delete((req, res, next) => {
   })
 })
 
+// API for Board
+lessonRoute.get('/board/',
+  async (req, res) => {
+    try {
+
+      const post2 = await LessonModel.aggregate([
+        {
+          $sample: {
+            size: 1
+          },
+        },
+        {
+            "$unwind": "$solutions"
+        },
+         {
+           "$group": {
+               "_id": "$name", 
+               "total": {
+                   "$sum": "$solutions.solvedNumber"
+               }
+           }
+       },
+       {
+           "$project": {
+              "_id": 0,
+              "name": "$_id",
+              "total": 1
+          }
+       }
+       ])
+
+      const post = await LessonModel.findOne({name: post2[0]['name']});
+
+      let target = post['targetNumber']
+      let solved = post2[0]['total']
+
+      let title = post['name'] + " " + solved + " / " + target
+      let message = ""
+
+      if(solved > target) {
+        message = "HEDEF TAMAMLANDI"
+      } else {
+        let question = target - solved
+        message = "KALAN " + question + " SORU"
+      }
+
+      var data = {
+        title: title,
+        message: message
+      };
+
+      res.json(data)
+
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
 module.exports = lessonRoute
